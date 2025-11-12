@@ -69,7 +69,7 @@ jobs:
             cd /home/ubuntu/tic-tac || git clone https://github.com/vinothdevops87-dotcom/tic-tac.git /home/ubuntu/tic-tac
             cd /home/ubuntu/tic-tac
 
-            # Ensure permissions
+            # Fix permissions & safe directory
             sudo chown -R ubuntu:ubuntu /home/ubuntu/tic-tac
             git config --global --add safe.directory /home/ubuntu/tic-tac
 
@@ -80,8 +80,8 @@ jobs:
             # Update deployment image tag
             sed -i "s|image:.*|image: vk2615/tic-tac-toe:${{ github.sha }}|g" kubernetes/deployment.yaml
 
-            # Verify kubeconfig
-            export KUBECONFIG=/etc/kubernetes/admin.conf
+            # ✅ Use correct kubeconfig path (not admin.conf)
+            export KUBECONFIG=/home/ubuntu/.kube/config
 
             # Apply manifests
             kubectl apply -f kubernetes/deployment.yaml --validate=false
@@ -101,7 +101,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "✅ *Tic-Tac-Toe* deployed successfully to Kubernetes on EC2!",
+              "text": "✅ *Tic-Tac-Toe* deployed successfully to Kubernetes on EC2! 🚀",
               "attachments": [
                 { "color": "good", "fields": [{ "title": "Image Tag", "value": "${{ github.sha }}" }] }
               ]
@@ -115,7 +115,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Deployment failed for *Tic-Tac-Toe* on Kubernetes.",
+              "text": "❌ Deployment failed for *Tic-Tac-Toe* app on Kubernetes.",
               "attachments": [
                 { "color": "danger", "fields": [{ "title": "Status", "value": "Failed" }] }
               ]

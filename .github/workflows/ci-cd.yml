@@ -1,24 +1,29 @@
-name: deploy the tic-tac-toe app to ssh server
+name: Deploy Tic-Tac-Toe App to SSH Server
+
 on:
   push:
     branches:
       - main  
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2 
+        uses: actions/checkout@v4
 
-      - name: install dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: run tests
+      - name: Run tests
         run: npm test   
-      
-      - name: build the app
+
+      - name: Build the app
         run: npm run build
-      
+
+      # -----------------------------
+      # 🔍 SonarQube Scan
+      # -----------------------------
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v2
         env:
@@ -30,30 +35,57 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      
-      - name: login to docker hub
-        uses: docker/login-action@v2
+
+      # -----------------------------
+      # 🐳 Docker Build & Push
+      # -----------------------------
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           
-      - name: build and push docker image
-        uses: docker/build-push-action@v2
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: vk2615/tic-tac-toe:latest
-      - name: trivy security scan
+
+      # -----------------------------
+      # 🔒 Security Scan
+      # -----------------------------
+      - name: Trivy Security Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: vk2615/tic-tac-toe:latest
-      - name: notify deployment start
+
+      # -----------------------------
+      # 🧩 Slack Notifications
+      # -----------------------------
+      - name: Notify deployment start
         uses: slackapi/slack-github-action@v2
         with:
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: "Deployment to production started for tic-tac-toe app."
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🚀 Deployment to *production* started for *tic-tac-toe* app.",
+              "attachments": [
+                {
+                  "color": "#439FE0",
+                  "fields": [
+                    { "title": "Status", "value": "In Progress", "short": true },
+                    { "title": "Environment", "value": "Production", "short": true }
+                  ]
+                }
+              ]
+            }
 
-      - name: deploy to production server
+      # -----------------------------
+      # 🚀 Deploy to SSH Server
+      # -----------------------------
+      - name: Deploy to production server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_SERVER_HOST }}
@@ -65,16 +97,36 @@ jobs:
             docker rm tic-tac-toe || true
             docker run -d -p 3000:80 --name tic-tac-toe vk2615/tic-tac-toe:latest  
 
-      - name: notify deployment success
+      # -----------------------------
+      # ✅ Notify Success
+      # -----------------------------
+      - name: Notify deployment success
         if: success()
         uses: slackapi/slack-github-action@v2
         with:
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: "Deployment to production succeeded for tic-tac-toe app."
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "✅ Deployment to *production* succeeded for *tic-tac-toe* app! 🎉",
+              "attachments": [
+                { "color": "good", "fields": [{ "title": "Status", "value": "Success" }] }
+              ]
+            }
 
-      - name: notify deployment failure
+      # -----------------------------
+      # ❌ Notify Failure
+      # -----------------------------
+      - name: Notify deployment failure
         if: failure()
         uses: slackapi/slack-github-action@v2
-        with: 
-          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: "Deployment to production failed for tic-tac-toe app."
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Deployment to *production* failed for *tic-tac-toe* app!",
+              "attachments": [
+                { "color": "danger", "fields": [{ "title": "Status", "value": "Failed" }] }
+              ]
+            }

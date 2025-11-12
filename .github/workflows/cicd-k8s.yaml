@@ -61,15 +61,33 @@ jobs:
       - name: Deploy to Kubernetes via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.SSH_SERVER_HOST }}           # e.g., ec2-13-232-XX-XX.ap-south-1.compute.amazonaws.com
-          username: ubuntu                        # or ec2-user / root depending on AMI
-          key: ${{ secrets.SSH_SERVER_KEY }}         # your PEM key content added as GitHub secret
+          host: ${{ secrets.SSH_SERVER_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_SERVER_KEY }}
           script: |
+            # Ensure repo exists
+            cd /home/ubuntu/tic-tac || git clone https://github.com/vinothdevops87-dotcom/tic-tac.git /home/ubuntu/tic-tac
             cd /home/ubuntu/tic-tac
-            git pull origin main
+
+            # Ensure permissions
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/tic-tac
+            git config --global --add safe.directory /home/ubuntu/tic-tac
+
+            # Pull latest code
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Update deployment image tag
             sed -i "s|image:.*|image: vk2615/tic-tac-toe:${{ github.sha }}|g" kubernetes/deployment.yaml
-            kubectl apply -f kubernetes/deployment.yaml
-            kubectl apply -f kubernetes/service.yaml
+
+            # Verify kubeconfig
+            export KUBECONFIG=/etc/kubernetes/admin.conf
+
+            # Apply manifests
+            kubectl apply -f kubernetes/deployment.yaml --validate=false
+            kubectl apply -f kubernetes/service.yaml --validate=false
+
+            # Wait for rollout
             kubectl rollout status deployment/tic-tac-toe
 
       # ---------------------------
@@ -83,7 +101,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "✅ *Tic-Tac-Toe* app deployed successfully to Kubernetes on EC2! 🚀",
+              "text": "✅ *Tic-Tac-Toe* deployed successfully to Kubernetes on EC2!",
               "attachments": [
                 { "color": "good", "fields": [{ "title": "Image Tag", "value": "${{ github.sha }}" }] }
               ]
@@ -97,7 +115,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Deployment failed for *Tic-Tac-Toe* app on Kubernetes.",
+              "text": "❌ Deployment failed for *Tic-Tac-Toe* on Kubernetes.",
               "attachments": [
                 { "color": "danger", "fields": [{ "title": "Status", "value": "Failed" }] }
               ]

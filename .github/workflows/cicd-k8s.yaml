@@ -61,9 +61,9 @@ jobs:
       - name: Deploy to Kubernetes via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.SSH_REMOTE_HOST }}           # e.g., ec2-13-232-XX-XX.ap-south-1.compute.amazonaws.com
+          host: ${{ secrets.SSH_SERVER_HOST }}           # e.g., ec2-13-232-XX-XX.ap-south-1.compute.amazonaws.com
           username: ubuntu                        # or ec2-user / root depending on AMI
-          key: ${{ secrets.SSH_REMOTE_KEY }}         # your PEM key content added as GitHub secret
+          key: ${{ secrets.SSH_SERVER_KEY }}         # your PEM key content added as GitHub secret
           script: |
             cd /home/ubuntu/tic-tac-toe
             git pull origin main

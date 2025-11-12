@@ -65,7 +65,7 @@ jobs:
           username: ubuntu                        # or ec2-user / root depending on AMI
           key: ${{ secrets.SSH_SERVER_KEY }}         # your PEM key content added as GitHub secret
           script: |
-            cd /home/ubuntu/tic-tac-toe
+            cd /home/ubuntu/tic-tac
             git pull origin main
             sed -i "s|image:.*|image: vk2615/tic-tac-toe:${{ github.sha }}|g" kubernetes/deployment.yaml
             kubectl apply -f kubernetes/deployment.yaml

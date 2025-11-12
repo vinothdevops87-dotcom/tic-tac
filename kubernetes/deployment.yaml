@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: tic-tac-toe
-          image: vk2615/tic-tac-toe:latest
+          image: vk2615/tic-tac-toe:ad78266910d99623ad69230f8bcfc5673fc6eaf9
           ports:
             - containerPort: 80

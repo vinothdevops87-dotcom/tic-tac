@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ---------------------------
+      # 📦 Checkout & Build
+      # ---------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -53,30 +56,24 @@ jobs:
           tags: vk2615/tic-tac-toe:${{ github.sha }}
 
       # ---------------------------
-      # ⚓ Configure kubectl
+      # ⚙️ Deploy to Kubernetes (via SSH into EC2)
       # ---------------------------
-      - name: Set up Kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+      - name: Deploy to Kubernetes via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_REMOTE_HOST }}           # e.g., ec2-13-232-XX-XX.ap-south-1.compute.amazonaws.com
+          username: ubuntu                        # or ec2-user / root depending on AMI
+          key: ${{ secrets.SSH_REMOTE_KEY }}         # your PEM key content added as GitHub secret
+          script: |
+            cd /home/ubuntu/tic-tac-toe
+            git pull origin main
+            sed -i "s|image:.*|image: vk2615/tic-tac-toe:${{ github.sha }}|g" kubernetes/deployment.yaml
+            kubectl apply -f kubernetes/deployment.yaml
+            kubectl apply -f kubernetes/service.yaml
+            kubectl rollout status deployment/tic-tac-toe
 
       # ---------------------------
-      # 🧩 Update K8s Manifests
-      # ---------------------------
-      - name: Update Kubernetes deployment with new image
-        run: |
-          sed -i "s|image:.*|image: vk2615/tic-tac-toe:${{ github.sha }}|g" kubernetes/deployment.yaml
-
-      # ---------------------------
-      # 🚀 Deploy to Cluster
-      # ---------------------------
-      - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f kubernetes/deployment.yaml
-          kubectl apply -f kubernetes/service.yaml
-
-      # ---------------------------
-      # ✅ Slack Notification
+      # ✅ Slack Notifications
       # ---------------------------
       - name: Notify deployment success
         if: success()
@@ -86,9 +83,9 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "✅ Deployed *tic-tac-toe* app to *Kubernetes* successfully!",
+              "text": "✅ *Tic-Tac-Toe* app deployed successfully to Kubernetes on EC2! 🚀",
               "attachments": [
-                { "color": "good", "fields": [{ "title": "Cluster", "value": "Production" }] }
+                { "color": "good", "fields": [{ "title": "Image Tag", "value": "${{ github.sha }}" }] }
               ]
             }
 
@@ -100,7 +97,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "❌ Deployment failed for *tic-tac-toe* app on Kubernetes.",
+              "text": "❌ Deployment failed for *Tic-Tac-Toe* app on Kubernetes.",
               "attachments": [
                 { "color": "danger", "fields": [{ "title": "Status", "value": "Failed" }] }
               ]

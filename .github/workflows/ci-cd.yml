@@ -1,4 +1,4 @@
-Name: deploy the tic-tac-toe app to ssh server
+name: deploy the tic-tac-toe app to ssh server
 on:
   push:
     branches:
